@@ -1,11 +1,15 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 import os
+from document_service import DocumentProcessor
 
 # Create the FastAPI app
 app = FastAPI(title="Document RAG System")
 
 # Create uploads directory if it doesn't exist
 os.makedirs("uploads", exist_ok=True)
+
+# Initialize document processor
+doc_processor = DocumentProcessor()
 
 @app.get("/")
 def read_root():
@@ -39,14 +43,31 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     
-    # Return info about the uploaded file
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "size": len(content),
-        "path": file_path,
-        "message": "File uploaded successfully!"
-    }
+    # NEW: Process the document and extract text
+    try:
+        document_info = doc_processor.read_file_content(file_path)
+        
+        return {
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "size": len(content),
+            "path": file_path,
+            "text_preview": document_info["content"][:500] + "..." if len(document_info["content"]) > 500 else document_info["content"],
+            "word_count": document_info["word_count"],
+            "character_count": document_info["character_count"],
+            "file_type": document_info["file_type"],
+            "message": "File uploaded and processed successfully!"
+        }
+    except Exception as e:
+        # If processing fails, still return upload success but note the processing error
+        return {
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "size": len(content),
+            "path": file_path,
+            "processing_error": str(e),
+            "message": "File uploaded but processing failed"
+        }
 
 @app.get("/files")
 def list_uploaded_files():
@@ -59,3 +80,23 @@ def list_uploaded_files():
         }
     except Exception as e:
         return {"files": [], "count": 0, "error": str(e)}
+
+@app.get("/files/{filename}/content")
+def get_file_content(filename: str):
+    """Get the processed content of a specific file"""
+    file_path = f"uploads/{filename}"
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        document_info = doc_processor.read_file_content(file_path)
+        return {
+            "filename": filename,
+            "content": document_info["content"],
+            "word_count": document_info["word_count"],
+            "character_count": document_info["character_count"],
+            "file_type": document_info["file_type"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
