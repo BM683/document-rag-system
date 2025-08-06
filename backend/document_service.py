@@ -2,6 +2,7 @@ import os
 from typing import Dict, Any
 import PyPDF2
 from docx import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 class DocumentProcessor:
     """Handles reading and processing different document types"""
@@ -55,3 +56,22 @@ class DocumentProcessor:
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
         return text.strip()
+
+    def chunk_text(self, full_text: str, source_filename: str) -> list[dict]:
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,     # Tune as needed!
+            chunk_overlap=200,   # Overlap for context carryover
+            separators=["\n\n", "\n", " ", ""]
+        )
+        chunks = splitter.split_text(full_text)
+
+        chunked_docs = []
+        for i, chunk in enumerate(chunks):
+            chunked_docs.append({
+                "chunk_index": i,
+                "text": chunk,
+                "source": source_filename,
+                "length": len(chunk),
+                "token_estimate": len(chunk.split())
+            })
+        return chunked_docs
