@@ -100,3 +100,23 @@ def get_file_content(filename: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+@app.get("/files/{filename}/chunks")
+def get_file_chunks(filename: str):
+    """
+    Return a preview (first five) of the automated text chunks for a given file
+    """
+    file_path = f"uploads/{filename}"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        doc_info = doc_processor.read_file_content(file_path)
+        chunks = doc_processor.chunk_text(doc_info["content"], filename)
+        return {
+            "total_chunks": len(chunks),
+            "chunks": chunks[:5]  # Preview first five
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error chunking file: {str(e)}")
