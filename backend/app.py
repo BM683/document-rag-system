@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter
+from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter, Query
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -146,6 +146,15 @@ def embed_document_chunks(filename: str, namespace: str | None = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pinecone upsert failed: {str(e)}")
+
+@router.get("/search")
+def search(query: str, top_k: int = 5, namespace: str | None = None):
+    ns = namespace or "__default__"
+    try:
+        response = pinecone_service.search_chunks(query=query, top_k=top_k, namespace=ns)
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
 # Include router for API grouping

@@ -77,3 +77,34 @@ class PineconeService:
             self.index.upsert_records(ns, batch)
 
         return len(records)
+    
+    def search_chunks(self, query: str, top_k: int = 5, namespace: str = "__default__"):
+        response = self.index.search(
+            namespace=namespace,
+            query={
+                "top_k": top_k,
+                "inputs": {"text": query}
+            },
+            fields=["chunk_text", "source", "chunk_index"]
+        )
+        print("Raw Pinecone search response:", response)
+
+        matches = []
+        # Correctly iterate hits in Pinecone’s new API
+        for hit in response.get("result", {}).get("hits", []):
+            matches.append({
+                "id": hit.get("_id"),
+                "score": hit.get("_score"),
+                "chunk_text": hit.get("fields", {}).get("chunk_text"),
+                "source": hit.get("fields", {}).get("source"),
+                "chunk_index": hit.get("fields", {}).get("chunk_index"),
+            })
+
+        return {
+            "query": query,
+            "namespace": namespace,
+            "top_k": top_k,
+            "matches": matches
+        }
+
+
