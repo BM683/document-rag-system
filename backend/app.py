@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 # Load env variables from backend/.env
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
+from groq_client import groq_chat_completion
+
 from document_service import DocumentProcessor
 from pinecone_service import PineconeService
 
@@ -155,6 +157,45 @@ def search(query: str, top_k: int = 5, namespace: str | None = None):
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+    
+from groq_client import groq_chat_completion
+
+@router.post("/ask")
+def ask_question(
+    question: str,
+    top_k: int = 5,
+    namespace: str | None = None
+    ):
+    # Step 1: Retrieve chunks with Pinecone
+    ns = namespace or "__default__"
+    retrieval = pinecone_service.search_chunks(
+        query=question,
+        top_k=top_k,
+        namespace=ns
+    )
+    # Step 2: Prepare context for the LLM
+    context_text = "\n\n".join(
+        f"Source: {c['source']} (Chunk {c['chunk_index']}):\n{c['chunk_text']}" for c in retrieval['matches']
+    )
+    prompt = [
+        {
+            "role": "system",
+            "content": "You are an expert assistant. Use the provided document excerpts to answer as helpfully as possible. If unsure, say you don't know."
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context_text}\n\nQuestion: {question}\nAnswer:"
+        }
+    ]
+    # Step 3: Call Groq LLM
+    llm_response = groq_chat_completion(messages=prompt)
+    answer = llm_response['choices'][0]['message']['content']
+    return {
+        "question": question,
+        "answer": answer,
+        "chunks_used": retrieval['matches']
+    }
+
 
 
 # Include router for API grouping
