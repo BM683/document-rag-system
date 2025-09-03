@@ -13,3 +13,7 @@ temp/
 
 # Mac files
 .DS_Store
+
+
+gcp-credentials.json
+*.json
