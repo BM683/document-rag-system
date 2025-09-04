@@ -3,6 +3,13 @@ from pathlib import Path
 import os
 import io
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
+
+import uvicorn
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
 
 # Load environment variables
 if os.path.exists('.env'):
