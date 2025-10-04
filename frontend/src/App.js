@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 
+// Use environment variable or fallback to local for development
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://document-rag-system-511830906232.europe-west1.run.app';
+
 function App() {
   const [sessionNamespace, setSessionNamespace] = useState("");
   const [file, setFile] = useState(null);
@@ -9,7 +12,6 @@ function App() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  // REMOVED: const [uploadedFilename, setUploadedFilename] = useState("");
 
   useEffect(() => {
     let ns = localStorage.getItem("sessionNamespace");
@@ -26,21 +28,21 @@ function App() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-  
+
       // Upload returns blob_name now
-      const uploadRes = await axios.post("http://localhost:8000/upload", formData, {
+      const uploadRes = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-  
+
       const blobName = uploadRes.data.blob_name;  // Use blob_name instead of filename
-      
+
       // Embed using blob_name
       await axios.post(
-        `http://localhost:8000/api/files/${encodeURIComponent(blobName)}/embed`,
+        `${API_BASE_URL}/api/files/${encodeURIComponent(blobName)}/embed`,
         null,
         { params: { namespace: sessionNamespace } }
       );
-  
+
       alert("✅ File uploaded and indexed successfully!");
     } catch (error) {
       alert("❌ Error uploading or embedding file: " + error.message);
@@ -54,7 +56,7 @@ function App() {
     if (!question) return alert("Please enter a question.");
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:8000/api/ask", null, {
+      const res = await axios.post(`${API_BASE_URL}/api/ask`, null, {
         params: {
           question,
           top_k: 5,
