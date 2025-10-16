@@ -1,0 +1,56 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: document-rag-system-frontend
+  namespace: '511830906232'
+  labels:
+    gcb-trigger-id: e223878e-4dfb-44e1-afca-390f45ed9d07
+    managed-by: gcp-cloud-build-deploy-cloud-run
+    gcb-trigger-region: global
+    cloud.googleapis.com/location: europe-west1
+  annotations:
+    serving.knative.dev/creator: Billy.mitchell11@hotmail.co.uk
+    serving.knative.dev/lastModifier: Billy.mitchell11@hotmail.co.uk
+    run.googleapis.com/client-name: cloud-console
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/invoker-iam-disabled: 'true'
+spec:
+  template:
+    metadata:
+      labels:
+        run.googleapis.com/startupProbeType: Default
+      annotations:
+        run.googleapis.com/client-name: cloud-console
+        autoscaling.knative.dev/maxScale: '20'
+        run.googleapis.com/startup-cpu-boost: 'true'
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: 511830906232-compute@developer.gserviceaccount.com
+      containers:
+      - name: document-rag-frontend
+        # Replace with your actual built image
+        image: gcr.io/511830906232/document-rag-frontend:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        startupProbe:
+          timeoutSeconds: 240
+          periodSeconds: 240
+          failureThreshold: 1
+          tcpSocket:
+            port: 8080
+        # Add environment variable for API URL
+        env:
+        - name: REACT_APP_API_URL
+          value: "https://document-rag-system-511830906232.europe-west1.run.app"
+  traffic:
+  - percent: 100
+    latestRevision: true
+
+

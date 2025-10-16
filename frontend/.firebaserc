@@ -1,0 +1,4 @@
+# Firebase configuration
+.firebase/
+firebase-debug.log
+firebase-debug.*.log

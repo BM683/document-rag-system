@@ -1,0 +1,13 @@
+[debug] [2025-10-16T18:30:28.660Z] ----------------------------------------------------------------------
+[debug] [2025-10-16T18:30:28.666Z] Command:       /opt/homebrew/Cellar/node/22.5.1/bin/node /opt/homebrew/bin/firebase login
+[debug] [2025-10-16T18:30:28.666Z] CLI Version:   14.20.0
+[debug] [2025-10-16T18:30:28.666Z] Platform:      darwin
+[debug] [2025-10-16T18:30:28.666Z] Node Version:  v22.5.1
+[debug] [2025-10-16T18:30:28.666Z] Time:          Thu Oct 16 2025 19:30:28 GMT+0100 (British Summer Time)
+[debug] [2025-10-16T18:30:28.667Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-10-16T18:30:28.668Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[warn] ⚠  JSON error trying to load /Users/billymitchell/document-rag-system/document-rag-system/frontend/.firebaserc 
+[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
+[debug] [2025-10-16T18:30:29.255Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-10-16T18:30:29.256Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
