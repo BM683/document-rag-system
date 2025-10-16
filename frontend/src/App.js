@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
+import { 
+  Upload, 
+  MessageSquare, 
+  FileText, 
+  Brain, 
+  Loader2, 
+  CheckCircle, 
+  AlertCircle,
+  Sparkles,
+  Database,
+  Search
+} from "lucide-react";
+import "./App.css";
 
 // Use environment variable or fallback to local for development
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://document-rag-system-511830906232.europe-west1.run.app';
@@ -12,6 +25,8 @@ function App() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     let ns = localStorage.getItem("sessionNamespace");
@@ -22,38 +37,49 @@ function App() {
     setSessionNamespace(ns);
   }, []);
 
+  const showMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+  };
+
   const handleFileUpload = async () => {
-    if (!file) return alert("Please select a file first.");
+    if (!file) {
+      showMessage('error', 'Please select a file first.');
+      return;
+    }
+    
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Upload returns blob_name now
       const uploadRes = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const blobName = uploadRes.data.blob_name;  // Use blob_name instead of filename
+      const blobName = uploadRes.data.blob_name;
 
-      // Embed using blob_name
       await axios.post(
         `${API_BASE_URL}/api/files/${encodeURIComponent(blobName)}/embed`,
         null,
         { params: { namespace: sessionNamespace } }
       );
 
-      alert("✅ File uploaded and indexed successfully!");
+      showMessage('success', 'File uploaded and indexed successfully!');
+      setFile(null);
     } catch (error) {
-      alert("❌ Error uploading or embedding file: " + error.message);
+      showMessage('error', `Error uploading or embedding file: ${error.message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  // Ask question
   const handleAsk = async () => {
-    if (!question) return alert("Please enter a question.");
+    if (!question.trim()) {
+      showMessage('error', 'Please enter a question.');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE_URL}/api/ask`, null, {
@@ -70,121 +96,160 @@ function App() {
     setLoading(false);
   };
 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      setFile(droppedFile);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
   return (
-    <div style={styles.wrapper}>
-      <h1 style={styles.heading}>📚 Document RAG Assistant</h1>
-      <p style={styles.subText}>
-        Session: <strong>{sessionNamespace}</strong>
-      </p>
+    <div className="modern-container">
+      {/* Header */}
+      <header className="modern-header">
+        <h1 className="modern-title">
+          <Sparkles className="card-icon" style={{ width: '32px', height: '32px', marginRight: '0.5rem' }} />
+          Document RAG Assistant
+        </h1>
+        <p className="modern-subtitle">
+          Upload documents and ask intelligent questions powered by AI
+        </p>
+        <div className="session-info">
+          <Database className="card-icon" style={{ width: '16px', height: '16px' }} />
+          Session: <strong>{sessionNamespace}</strong>
+        </div>
+      </header>
 
-      {/* Upload Section */}
-      <div style={styles.card}>
-        <h2 style={styles.sectionTitle}>Upload Document</h2>
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files[0])}
-          style={styles.fileInput}
-        />
-        <button
-          style={styles.button}
-          onClick={handleFileUpload}
-          disabled={uploading}
-        >
-          {uploading ? "⏳ Uploading..." : "📤 Upload"}
-        </button>
-      </div>
+      {/* Message Display */}
+      {message.text && (
+        <div className={`message-display ${message.type}`}>
+          {message.type === 'success' ? (
+            <CheckCircle />
+          ) : (
+            <AlertCircle />
+          )}
+          {message.text}
+        </div>
+      )}
 
-      {/* Ask Section */}
-      <div style={styles.card}>
-        <h2 style={styles.sectionTitle}>Ask a Question</h2>
-        <textarea
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Enter your question about the uploaded documents..."
-          style={styles.textArea}
-        />
-        <button
-          style={styles.button}
-          onClick={handleAsk}
-          disabled={loading}
-        >
-          {loading ? "🔍 Searching..." : "❓ Ask"}
-        </button>
+      {/* Main Content */}
+      <div className="cards-grid">
+        {/* Upload Section */}
+        <div className="modern-card">
+          <h2 className="card-title">
+            <Upload />
+            Upload Document
+          </h2>
+          
+          <div 
+            className={`file-upload-area ${dragOver ? 'dragover' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById('file-input').click()}
+          >
+            <Upload className="upload-icon" />
+            <div className="upload-text">
+              {file ? file.name : 'Click to upload or drag and drop'}
+            </div>
+            <div className="upload-hint">
+              Supports PDF, DOCX, and TXT files
+            </div>
+          </div>
+          
+          <input
+            id="file-input"
+            type="file"
+            onChange={handleFileChange}
+            className="hidden-file-input"
+            accept=".pdf,.docx,.txt"
+          />
+
+          <button
+            className="modern-button"
+            onClick={handleFileUpload}
+            disabled={uploading || !file}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="loading-spinner" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <FileText />
+                Upload & Index
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Ask Section */}
+        <div className="modern-card">
+          <h2 className="card-title">
+            <MessageSquare />
+            Ask Questions
+          </h2>
+          
+          <div className="modern-input-group">
+            <label className="modern-label">Your Question</label>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask anything about your uploaded documents..."
+              className="modern-textarea"
+              rows="4"
+            />
+          </div>
+
+          <button
+            className="modern-button"
+            onClick={handleAsk}
+            disabled={loading || !question.trim()}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="loading-spinner" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Search />
+                Ask Question
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Answer Section */}
       {answer && (
-        <div style={styles.answerCard}>
-          <h3>💬 Answer:</h3>
-          <p style={styles.answerText}>{answer}</p>
+        <div className="answer-card">
+          <h3 className="answer-title">
+            <Brain />
+            AI Response
+          </h3>
+          <div className="answer-text">{answer}</div>
         </div>
       )}
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    maxWidth: "700px",
-    margin: "0 auto",
-    fontFamily: "Arial, sans-serif",
-    padding: "20px",
-    color: "#333",
-  },
-  heading: {
-    textAlign: "center",
-    fontSize: "2rem",
-    marginBottom: "5px",
-  },
-  subText: {
-    textAlign: "center",
-    fontSize: "0.9rem",
-    color: "#777",
-    marginBottom: "20px",
-  },
-  card: {
-    background: "#fff",
-    padding: "20px",
-    marginBottom: "20px",
-    borderRadius: "10px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-  },
-  sectionTitle: {
-    marginTop: 0,
-    fontSize: "1.2rem",
-  },
-  fileInput: {
-    display: "block",
-    marginBottom: "10px",
-  },
-  textArea: {
-    width: "100%",
-    minHeight: "80px",
-    marginBottom: "10px",
-    padding: "10px",
-    fontSize: "1rem",
-    borderRadius: "5px",
-    border: "1px solid #ddd",
-  },
-  button: {
-    background: "#007BFF",
-    color: "#fff",
-    padding: "10px 20px",
-    fontSize: "1rem",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-  answerCard: {
-    background: "#f9f9f9",
-    padding: "15px",
-    borderRadius: "10px",
-    border: "1px solid #ddd",
-  },
-  answerText: {
-    whiteSpace: "pre-wrap",
-    margin: 0,
-  },
-};
 
 export default App;
