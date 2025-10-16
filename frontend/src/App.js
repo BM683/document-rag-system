@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
-import { 
-  Upload, 
-  MessageSquare, 
-  FileText, 
-  Brain, 
-  Loader2, 
-  CheckCircle, 
-  AlertCircle,
-  Sparkles,
-  Database,
-  Search
-} from "lucide-react";
 import "./App.css";
 
 // Use environment variable or fallback to local for development
@@ -124,15 +112,13 @@ function App() {
       {/* Header */}
       <header className="modern-header">
         <h1 className="modern-title">
-          <Sparkles className="card-icon" style={{ width: '32px', height: '32px', marginRight: '0.5rem' }} />
-          Document RAG Assistant
+          ✨ Document RAG Assistant
         </h1>
         <p className="modern-subtitle">
           Upload documents and ask intelligent questions powered by AI
         </p>
         <div className="session-info">
-          <Database className="card-icon" style={{ width: '16px', height: '16px' }} />
-          Session: <strong>{sessionNamespace}</strong>
+          🗄️ Session: <strong>{sessionNamespace}</strong>
         </div>
       </header>
 
@@ -140,9 +126,9 @@ function App() {
       {message.text && (
         <div className={`message-display ${message.type}`}>
           {message.type === 'success' ? (
-            <CheckCircle />
+            '✅'
           ) : (
-            <AlertCircle />
+            '❌'
           )}
           {message.text}
         </div>
@@ -153,8 +139,7 @@ function App() {
         {/* Upload Section */}
         <div className="modern-card">
           <h2 className="card-title">
-            <Upload />
-            Upload Document
+            📤 Upload Document
           </h2>
           
           <div 
@@ -164,7 +149,7 @@ function App() {
             onDrop={handleDrop}
             onClick={() => document.getElementById('file-input').click()}
           >
-            <Upload className="upload-icon" />
+            <div className="upload-icon">📁</div>
             <div className="upload-text">
               {file ? file.name : 'Click to upload or drag and drop'}
             </div>
@@ -188,13 +173,11 @@ function App() {
           >
             {uploading ? (
               <>
-                <Loader2 className="loading-spinner" />
-                Processing...
+                ⏳ Processing...
               </>
             ) : (
               <>
-                <FileText />
-                Upload & Index
+                📄 Upload & Index
               </>
             )}
           </button>
@@ -203,8 +186,7 @@ function App() {
         {/* Ask Section */}
         <div className="modern-card">
           <h2 className="card-title">
-            <MessageSquare />
-            Ask Questions
+            💬 Ask Questions
           </h2>
           
           <div className="modern-input-group">
@@ -225,13 +207,11 @@ function App() {
           >
             {loading ? (
               <>
-                <Loader2 className="loading-spinner" />
-                Analyzing...
+                🔍 Analyzing...
               </>
             ) : (
               <>
-                <Search />
-                Ask Question
+                ❓ Ask Question
               </>
             )}
           </button>
@@ -242,8 +222,7 @@ function App() {
       {answer && (
         <div className="answer-card">
           <h3 className="answer-title">
-            <Brain />
-            AI Response
+            🧠 AI Response
           </h3>
           <div className="answer-text">{answer}</div>
         </div>
