@@ -16,4 +16,5 @@ temp/
 
 
 gcp-credentials.json
-*.json
+# Allow vercel.json for deployment configuration
+!vercel.json
