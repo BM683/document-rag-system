@@ -6,6 +6,12 @@ import "./App.css";
 // Use environment variable or fallback to local for development
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://document-rag-system-511830906232.europe-west1.run.app';
 
+// Debug: Log which API URL is being used
+console.log('🔧 Frontend Configuration:');
+console.log(`   API URL: ${API_BASE_URL}`);
+console.log(`   Environment: ${process.env.NODE_ENV}`);
+console.log(`   REACT_APP_API_URL: ${process.env.REACT_APP_API_URL}`);
+
 function App() {
   const [sessionNamespace, setSessionNamespace] = useState("");
   const [file, setFile] = useState(null);
@@ -15,6 +21,8 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [dragOver, setDragOver] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   useEffect(() => {
     let ns = localStorage.getItem("sessionNamespace");
@@ -23,7 +31,25 @@ function App() {
       localStorage.setItem("sessionNamespace", ns);
     }
     setSessionNamespace(ns);
+    fetchDocuments(ns);
   }, []);
+
+  const fetchDocuments = async (namespace) => {
+    if (!namespace) return;
+    
+    setLoadingDocs(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/documents`, {
+        params: { namespace }
+      });
+      setDocuments(response.data.documents || []);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      setDocuments([]);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
@@ -43,6 +69,7 @@ function App() {
 
       const uploadRes = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        params: { namespace: sessionNamespace }
       });
 
       const blobName = uploadRes.data.blob_name;
@@ -55,6 +82,8 @@ function App() {
 
       showMessage('success', 'File uploaded and indexed successfully!');
       setFile(null);
+      // Refresh document list
+      fetchDocuments(sessionNamespace);
     } catch (error) {
       showMessage('error', `Error uploading or embedding file: ${error.message}`);
     } finally {
@@ -107,6 +136,59 @@ function App() {
     setFile(e.target.files[0]);
   };
 
+  const handleDownload = async (blobName, filename) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/documents/${encodeURIComponent(blobName)}/download`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      showMessage('error', `Error downloading file: ${error.message}`);
+    }
+  };
+
+  const handleDelete = async (blobName, filename, documentId) => {
+    if (!window.confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const params = { namespace: sessionNamespace };
+      if (documentId && documentId !== 'None' && documentId !== 'null' && documentId !== null) {
+        params.document_id = documentId;
+      }
+      
+      console.log('🗑️ Frontend Delete:', { blobName, filename, documentId, params });
+      
+      await axios.delete(`${API_BASE_URL}/api/documents/${encodeURIComponent(blobName)}`, {
+        params
+      });
+      
+      showMessage('success', `"${filename}" deleted successfully!`);
+      // Refresh document list
+      fetchDocuments(sessionNamespace);
+    } catch (error) {
+      showMessage('error', `Error deleting file: ${error.message}`);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div className="modern-container">
       {/* Header */}
@@ -136,51 +218,109 @@ function App() {
 
       {/* Main Content */}
       <div className="cards-grid">
-        {/* Upload Section */}
+        {/* Document Library Section */}
         <div className="modern-card">
           <h2 className="card-title">
-            📤 Upload Document
+            📚 Document Library
           </h2>
           
-          <div 
-            className={`file-upload-area ${dragOver ? 'dragover' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById('file-input').click()}
-          >
-            <div className="upload-icon">📁</div>
-            <div className="upload-text">
-              {file ? file.name : 'Click to upload or drag and drop'}
+          {/* Upload Area */}
+          <div className="upload-section">
+            <div 
+              className={`file-upload-area ${dragOver ? 'dragover' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('file-input').click()}
+            >
+              <div className="upload-icon">📁</div>
+              <div className="upload-text">
+                {file ? file.name : 'Click to upload or drag and drop'}
+              </div>
+              <div className="upload-hint">
+                Supports PDF, DOCX, and TXT files
+              </div>
             </div>
-            <div className="upload-hint">
-              Supports PDF, DOCX, and TXT files
-            </div>
-          </div>
-          
-          <input
-            id="file-input"
-            type="file"
-            onChange={handleFileChange}
-            className="hidden-file-input"
-            accept=".pdf,.docx,.txt"
-          />
+            
+            <input
+              id="file-input"
+              type="file"
+              onChange={handleFileChange}
+              className="hidden-file-input"
+              accept=".pdf,.docx,.txt"
+            />
 
-          <button
-            className="modern-button"
-            onClick={handleFileUpload}
-            disabled={uploading || !file}
-          >
-            {uploading ? (
-              <>
-                ⏳ Processing...
-              </>
+            <button
+              className="modern-button"
+              onClick={handleFileUpload}
+              disabled={uploading || !file}
+            >
+              {uploading ? (
+                <>
+                  ⏳ Processing...
+                </>
+              ) : (
+                <>
+                  📄 Upload & Index
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Document List */}
+          <div className="document-list-section">
+            <h3 className="section-title">Your Documents</h3>
+            
+            {loadingDocs ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <span>Loading documents...</span>
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📄</div>
+                <p>No documents uploaded yet.</p>
+                <p>Upload your first document above to get started!</p>
+              </div>
             ) : (
-              <>
-                📄 Upload & Index
-              </>
+              <div className="document-list">
+                {documents.map((doc, index) => (
+                  <div key={index} className="document-item">
+                    <div className="document-info">
+                      <div className="document-name">
+                        📄 {doc.filename}
+                        {doc.is_indexed && <span className="indexed-badge">✓ Indexed</span>}
+                      </div>
+                      <div className="document-meta">
+                        <span className="file-size">{formatFileSize(doc.size)}</span>
+                        {doc.upload_date && (
+                          <span className="upload-date">
+                            {new Date(doc.upload_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="document-actions">
+                      <button
+                        className="action-button download-button"
+                        onClick={() => handleDownload(doc.blob_name, doc.filename)}
+                        title="Download document"
+                      >
+                        ⬇️ Download
+                      </button>
+                      <button
+                        className="action-button delete-button"
+                        onClick={() => handleDelete(doc.blob_name, doc.filename, doc.document_id)}
+                        title="Delete document"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Ask Section */}
