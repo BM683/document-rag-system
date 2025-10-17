@@ -115,7 +115,7 @@ function App() {
           ✨ Document RAG Assistant
         </h1>
         <p className="modern-subtitle">
-          Upload documents and ask intelligent questions powered by AI
+          Ask anything from your documents. Get instant answers.
         </p>
         <div className="session-info">
           🗄️ Session: <strong>{sessionNamespace}</strong>
