@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
+import ReactMarkdown from "react-markdown";
 import "./App.css";
 
 // Use environment variable or fallback to local for development
@@ -364,7 +365,9 @@ function App() {
           <h3 className="answer-title">
             🧠 AI Response
           </h3>
-          <div className="answer-text">{answer}</div>
+          <div className="answer-text">
+            <ReactMarkdown>{answer}</ReactMarkdown>
+          </div>
         </div>
       )}
     </div>

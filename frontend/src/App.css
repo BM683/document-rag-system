@@ -282,7 +282,148 @@ body {
   color: #374151;
   line-height: 1.7;
   font-size: 1rem;
-  white-space: pre-wrap;
+}
+
+/* Markdown Styles */
+.answer-text h1,
+.answer-text h2,
+.answer-text h3,
+.answer-text h4,
+.answer-text h5,
+.answer-text h6 {
+  color: #1f2937;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.answer-text h1 {
+  font-size: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.answer-text h2 {
+  font-size: 1.25rem;
+}
+
+.answer-text h3 {
+  font-size: 1.125rem;
+}
+
+.answer-text h4 {
+  font-size: 1rem;
+}
+
+.answer-text h5,
+.answer-text h6 {
+  font-size: 0.875rem;
+}
+
+.answer-text p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+
+.answer-text ul,
+.answer-text ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.answer-text li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.answer-text ul li {
+  list-style-type: disc;
+}
+
+.answer-text ol li {
+  list-style-type: decimal;
+}
+
+.answer-text strong,
+.answer-text b {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.answer-text em,
+.answer-text i {
+  font-style: italic;
+}
+
+.answer-text code {
+  background-color: #f3f4f6;
+  color: #dc2626;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.answer-text pre {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.answer-text pre code {
+  background-color: transparent;
+  color: #374151;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.answer-text blockquote {
+  border-left: 4px solid #6366f1;
+  background-color: #f8faff;
+  padding: 1rem 1.5rem;
+  margin: 1rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-style: italic;
+  color: #4b5563;
+}
+
+.answer-text hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.answer-text a {
+  color: #6366f1;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.answer-text a:hover {
+  color: #4f46e5;
+}
+
+.answer-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.answer-text th,
+.answer-text td {
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.answer-text th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #374151;
 }
 
 /* Loading States */
