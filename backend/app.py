@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter, Query, Depends
 from pathlib import Path
 import os
 import io
@@ -19,7 +19,11 @@ if os.path.exists('.env'):
 from groq_client import groq_chat_completion
 from document_service import DocumentProcessor
 from pinecone_service import PineconeService
-from gcs_client import gcs_client  # NEW IMPORT
+from gcs_client import gcs_client
+from database import init_db
+from auth_routes import router as auth_router
+from auth_dependencies import get_current_user
+from models import User
 
 # Initialize FastAPI app and router
 app = FastAPI(title="Document RAG System")
@@ -39,6 +43,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize database on startup
+init_db()
 
 # Initialize services
 doc_processor = DocumentProcessor()
@@ -63,7 +70,10 @@ def health_check():
     return {"status": "healthy"}
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), namespace: str = Query(None)):
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
 
@@ -76,8 +86,8 @@ async def upload_file(file: UploadFile = File(...), namespace: str = Query(None)
         )
 
     try:
-        # Upload to GCS with namespace
-        file_metadata = gcs_client.upload_file(file, namespace=namespace)
+        # Upload to GCS with user_id
+        file_metadata = gcs_client.upload_file(file, user_id=str(current_user.id))
         
         # Process and preview text from GCS
         file_content = gcs_client.download_file_content(file_metadata["blob_name"])
@@ -168,7 +178,10 @@ def get_file_chunks(blob_name: str):
         raise HTTPException(status_code=500, detail=f"Error chunking file: {str(e)}")
 
 @router.post("/files/{blob_name:path}/embed")
-def embed_document_chunks(blob_name: str, namespace: str | None = None):
+def embed_document_chunks(
+    blob_name: str,
+    current_user: User = Depends(get_current_user)
+):
     """Reads a file from GCS, chunks it, and upserts chunks to Pinecone"""
     try:
         file_content = gcs_client.download_file_content(blob_name)
@@ -188,10 +201,10 @@ def embed_document_chunks(blob_name: str, namespace: str | None = None):
         if not chunks:
             raise HTTPException(status_code=400, detail="No chunks generated from document.")
 
-        total = pinecone_service.upsert_chunks(chunks, namespace=namespace, source_path=blob_name)
+        total = pinecone_service.upsert_chunks(chunks, user_id=str(current_user.id), source_path=blob_name)
         return {
             "message": f"Upserted {total} chunks to Pinecone",
-            "namespace": namespace or "__default__"
+            "user_id": str(current_user.id)
         }
     except HTTPException:
         raise
@@ -210,17 +223,18 @@ def test_pinecone_api(namespace: str = Query(...)):
 
 # Document management endpoints
 @router.get("/documents")
-def list_documents(namespace: str = Query(...)):
-    """List all documents for a given namespace"""
+def list_documents(current_user: User = Depends(get_current_user)):
+    """List all documents for the current user"""
     try:
-        print(f"📋 API Request: List documents for namespace '{namespace}'")
+        user_id = str(current_user.id)
+        print(f"📋 API Request: List documents for user '{user_id}'")
         
         # Get files from GCS
-        gcs_files = gcs_client.list_files_by_namespace(namespace)
+        gcs_files = gcs_client.list_files_by_user(user_id)
         print(f"📁 GCS returned {len(gcs_files)} files")
         
         # Get indexed documents from Pinecone
-        pinecone_docs = pinecone_service.list_documents_in_namespace(namespace)
+        pinecone_docs = pinecone_service.list_documents_for_user(user_id)
         print(f"🔍 Pinecone returned {len(pinecone_docs)} indexed documents")
         
         # Create a mapping of document names to document IDs for quick lookup
@@ -281,7 +295,7 @@ def list_documents(namespace: str = Query(...)):
         return {
             "documents": documents,
             "count": len(documents),
-            "namespace": namespace
+            "user_id": user_id
         }
     except Exception as e:
         print(f"❌ API Error: {str(e)}")
@@ -315,16 +329,21 @@ def download_document(blob_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to download file: {str(e)}")
 
 @router.delete("/documents/{blob_name:path}")
-def delete_document(blob_name: str, namespace: str = Query(...), document_id: str = Query(None)):
+def delete_document(
+    blob_name: str,
+    document_id: str = Query(None),
+    current_user: User = Depends(get_current_user)
+):
     """Delete document completely from both GCS and Pinecone"""
     try:
+        user_id = str(current_user.id)
         print(f"🗑️ API Delete: Deleting document '{blob_name}' with document_id '{document_id}'")
         
         # Delete from Pinecone first (if document_id provided)
         deleted_embeddings = 0
         if document_id and document_id != 'None' and document_id != 'null':
             print(f"🔄 Calling Pinecone delete with document_id: {document_id}")
-            deleted_embeddings = pinecone_service.delete_document_embeddings(document_id, namespace)
+            deleted_embeddings = pinecone_service.delete_document_embeddings(document_id, user_id)
             print(f"✅ Pinecone Delete: Removed {deleted_embeddings} embeddings")
         else:
             print(f"⚠️ No valid document_id provided ('{document_id}'), skipping Pinecone deletion")
@@ -362,18 +381,24 @@ def delete_file(blob_name: str, namespace: str | None = None):
 
 # Your existing endpoints remain the same
 @router.get("/search")
-def search(query: str, top_k: int = 5, namespace: str | None = None):
-    ns = namespace or "__default__"
+def search(
+    query: str,
+    top_k: int = 5,
+    current_user: User = Depends(get_current_user)
+):
     try:
-        response = pinecone_service.search_chunks(query=query, top_k=top_k, namespace=ns)
+        response = pinecone_service.search_chunks(query=query, top_k=top_k, user_id=str(current_user.id))
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @router.post("/ask")
-def ask_question(question: str, top_k: int = 5, namespace: str | None = None):
-    ns = namespace or "__default__"
-    retrieval = pinecone_service.search_chunks(query=question, top_k=top_k, namespace=ns)
+def ask_question(
+    question: str,
+    top_k: int = 5,
+    current_user: User = Depends(get_current_user)
+):
+    retrieval = pinecone_service.search_chunks(query=question, top_k=top_k, user_id=str(current_user.id))
     print(f"Found {len(retrieval['matches'])} chunks")
     
     context_text = "\n\n".join(
@@ -419,5 +444,6 @@ def test_groq_simple():
         return {"success": False, "error": str(e)}
 
 
-# Include router
+# Include routers
+app.include_router(auth_router, prefix="/api")
 app.include_router(router, prefix="/api", tags=["pinecone"])

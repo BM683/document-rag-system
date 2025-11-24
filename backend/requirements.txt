@@ -65,3 +65,7 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 uvicorn==0.35.0
 zstandard==0.23.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+psycopg2-binary==2.9.9
+email-validator==2.1.1
