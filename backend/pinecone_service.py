@@ -39,7 +39,7 @@ class PineconeService:
     def upsert_chunks(
         self,
         chunks: List[Dict[str, Any]],
-        namespace: str | None = None,
+        user_id: str | None = None,
         source_path: str | None = None
     ) -> int:
         """
@@ -49,7 +49,7 @@ class PineconeService:
           - "chunk_index" (int): index within the document
           - optional metadata fields you want to store (e.g., file name)
         """
-        ns = namespace or NAMESPACE_DEFAULT
+        ns = f"user_{user_id}" if user_id else NAMESPACE_DEFAULT
         doc_id = uuid.uuid4().hex[:8]
 
         records = []
@@ -84,7 +84,8 @@ class PineconeService:
 
         return len(records)
     
-    def search_chunks(self, query: str, top_k: int = 5, namespace: str = "__default__"):
+    def search_chunks(self, query: str, top_k: int = 5, user_id: str | None = None):
+        namespace = f"user_{user_id}" if user_id else NAMESPACE_DEFAULT
         response = self.index.search(
             namespace=namespace,
             query={
@@ -170,16 +171,17 @@ class PineconeService:
         except Exception as e:
             print(f"❌ API test failed: {e}")
 
-    def list_documents_in_namespace(self, namespace: str = "__default__") -> List[Dict[str, Any]]:
+    def list_documents_for_user(self, user_id: str) -> List[Dict[str, Any]]:
         """
-        List all unique documents in a namespace.
+        List all unique documents for a user.
         
         NOTE: Pinecone's query() API requires text input. We use a minimal query
         to retrieve vectors, then extract unique document_id values from metadata.
         This is the only way to list documents without having vector IDs upfront.
         """
         try:
-            print(f"🔍 Pinecone List: Querying namespace '{namespace}' for documents")
+            namespace = f"user_{user_id}"
+            print(f"🔍 Pinecone List: Querying namespace '{namespace}' for user '{user_id}'")
             
             # Check if namespace has any vectors (but don't rely on this completely)
             try:
@@ -278,12 +280,13 @@ class PineconeService:
             print(f"❌ Error listing documents: {str(e)}")
             return []
 
-    def delete_document_embeddings(self, document_id: str, namespace: str = "__default__") -> int:
+    def delete_document_embeddings(self, document_id: str, user_id: str) -> int:
         """
         Delete all embeddings for a specific document using document_id.
         Uses individual delete method since Pinecone doesn't have delete_all.
         """
         try:
+            namespace = f"user_{user_id}"
             print(f"🗑️ Deleting vectors for document_id '{document_id}' in namespace '{namespace}'")
             
             # Method 1: Try delete by metadata filter (most efficient - one API call)

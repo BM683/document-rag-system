@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { v4 as uuidv4 } from "uuid";
+import ReactMarkdown from "react-markdown";
+import { AuthProvider, useAuth } from "./AuthContext";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
 // Use environment variable or fallback to local for development
@@ -12,8 +16,8 @@ console.log(`   API URL: ${API_BASE_URL}`);
 console.log(`   Environment: ${process.env.NODE_ENV}`);
 console.log(`   REACT_APP_API_URL: ${process.env.REACT_APP_API_URL}`);
 
-function App() {
-  const [sessionNamespace, setSessionNamespace] = useState("");
+function DocumentApp() {
+  const { user, logout } = useAuth();
   const [file, setFile] = useState(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -25,26 +29,24 @@ function App() {
   const [loadingDocs, setLoadingDocs] = useState(false);
 
   useEffect(() => {
-    let ns = localStorage.getItem("sessionNamespace");
-    if (!ns) {
-      ns = uuidv4();
-      localStorage.setItem("sessionNamespace", ns);
+    if (user) {
+      fetchDocuments();
     }
-    setSessionNamespace(ns);
-    fetchDocuments(ns);
-  }, []);
+  }, [user]);
 
-  const fetchDocuments = async (namespace) => {
-    if (!namespace) return;
-    
+  const fetchDocuments = async () => {
     setLoadingDocs(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/api/documents`, {
-        params: { namespace }
+        withCredentials: true
       });
       setDocuments(response.data.documents || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
+      if (error.response?.status === 401) {
+        // Token expired, will be handled by auth context
+        return;
+      }
       setDocuments([]);
     } finally {
       setLoadingDocs(false);
@@ -69,7 +71,7 @@ function App() {
 
       const uploadRes = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        params: { namespace: sessionNamespace }
+        withCredentials: true
       });
 
       const blobName = uploadRes.data.blob_name;
@@ -77,15 +79,19 @@ function App() {
       await axios.post(
         `${API_BASE_URL}/api/files/${encodeURIComponent(blobName)}/embed`,
         null,
-        { params: { namespace: sessionNamespace } }
+        { withCredentials: true }
       );
 
       showMessage('success', 'File uploaded and indexed successfully!');
       setFile(null);
       // Refresh document list
-      fetchDocuments(sessionNamespace);
+      fetchDocuments();
     } catch (error) {
-      showMessage('error', `Error uploading or embedding file: ${error.message}`);
+      if (error.response?.status === 401) {
+        showMessage('error', 'Session expired. Please log in again.');
+      } else {
+        showMessage('error', `Error uploading or embedding file: ${error.response?.data?.detail || error.message}`);
+      }
     } finally {
       setUploading(false);
     }
@@ -103,12 +109,16 @@ function App() {
         params: {
           question,
           top_k: 5,
-          namespace: sessionNamespace,
         },
+        withCredentials: true
       });
       setAnswer(res.data.answer);
     } catch (error) {
-      setAnswer("Error getting answer: " + error.message);
+      if (error.response?.status === 401) {
+        setAnswer("Session expired. Please log in again.");
+      } else {
+        setAnswer("Error getting answer: " + (error.response?.data?.detail || error.message));
+      }
     }
     setLoading(false);
   };
@@ -139,7 +149,8 @@ function App() {
   const handleDownload = async (blobName, filename) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/documents/${encodeURIComponent(blobName)}/download`, {
-        responseType: 'blob'
+        responseType: 'blob',
+        withCredentials: true
       });
       
       // Create download link
@@ -152,7 +163,7 @@ function App() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      showMessage('error', `Error downloading file: ${error.message}`);
+      showMessage('error', `Error downloading file: ${error.response?.data?.detail || error.message}`);
     }
   };
 
@@ -162,7 +173,7 @@ function App() {
     }
     
     try {
-      const params = { namespace: sessionNamespace };
+      const params = {};
       if (documentId && documentId !== 'None' && documentId !== 'null' && documentId !== null) {
         params.document_id = documentId;
       }
@@ -170,14 +181,15 @@ function App() {
       console.log('🗑️ Frontend Delete:', { blobName, filename, documentId, params });
       
       await axios.delete(`${API_BASE_URL}/api/documents/${encodeURIComponent(blobName)}`, {
-        params
+        params,
+        withCredentials: true
       });
       
       showMessage('success', `"${filename}" deleted successfully!`);
       // Refresh document list
-      fetchDocuments(sessionNamespace);
+      fetchDocuments();
     } catch (error) {
-      showMessage('error', `Error deleting file: ${error.message}`);
+      showMessage('error', `Error deleting file: ${error.response?.data?.detail || error.message}`);
     }
   };
 
@@ -189,18 +201,29 @@ function App() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="modern-container">
       {/* Header */}
       <header className="modern-header">
-        <h1 className="modern-title">
-          ✨ Document RAG Assistant
-        </h1>
-        <p className="modern-subtitle">
-          Ask anything from your documents. Get instant answers.
-        </p>
-        <div className="session-info">
-          🗄️ Session: <strong>{sessionNamespace}</strong>
+        <div className="header-content">
+          <div>
+            <h1 className="modern-title">
+              ✨ Document RAG Assistant
+            </h1>
+            <p className="modern-subtitle">
+              Ask anything from your documents. Get instant answers.
+            </p>
+          </div>
+          <div className="user-info">
+            <span className="user-email">{user?.email}</span>
+            <button onClick={handleLogout} className="logout-button">
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -364,11 +387,53 @@ function App() {
           <h3 className="answer-title">
             🧠 AI Response
           </h3>
-          <div className="answer-text">{answer}</div>
+          <div className="answer-text">
+            <ReactMarkdown>{answer}</ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-export default App;
+function App() {
+  const [showRegister, setShowRegister] = useState(false);
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <span>Loading...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        {showRegister ? (
+          <Register onSwitchToLogin={() => setShowRegister(false)} />
+        ) : (
+          <Login onSwitchToRegister={() => setShowRegister(true)} />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <ProtectedRoute>
+      <DocumentApp />
+    </ProtectedRoute>
+  );
+}
+
+function AppWithProvider() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+
+export default AppWithProvider;

@@ -13,20 +13,20 @@ class GCSClient:
         self.bucket_name = os.getenv('GCS_BUCKET_NAME')
         self.bucket = self.client.bucket(self.bucket_name)
     
-    def upload_file(self, file: UploadFile, namespace: str = None) -> dict:
+    def upload_file(self, file: UploadFile, user_id: str = None) -> dict:
         """Upload file to GCS and return metadata"""
         # Generate unique filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         file_id = str(uuid.uuid4())[:8]
         
-        if namespace:
-            blob_name = f"{namespace}/{timestamp}_{file_id}_{file.filename}"
+        if user_id:
+            blob_name = f"users/{user_id}/{timestamp}_{file_id}_{file.filename}"
         else:
             blob_name = f"uploads/{timestamp}_{file_id}_{file.filename}"
         
         print(f"🚀 GCS Upload: Uploading {file.filename} to {blob_name}")
         print(f"📁 Bucket: {self.bucket_name}")
-        print(f"🏷️ Namespace: {namespace}")
+        print(f"👤 User ID: {user_id}")
         
         # Create blob and upload
         blob = self.bucket.blob(blob_name)
@@ -52,10 +52,11 @@ class GCSClient:
         blob = self.bucket.blob(blob_name)
         blob.delete()
     
-    def list_files_by_namespace(self, namespace: str) -> List[dict]:
-        """List all files in a specific namespace"""
+    def list_files_by_user(self, user_id: str) -> List[dict]:
+        """List all files for a specific user"""
         try:
-            print(f"🔍 GCS List: Looking for files in namespace '{namespace}'")
+            namespace = f"users/{user_id}"
+            print(f"🔍 GCS List: Looking for files for user '{user_id}'")
             print(f"📁 Bucket: {self.bucket_name}")
             print(f"🔎 Prefix: {namespace}/")
             
@@ -89,10 +90,10 @@ class GCSClient:
                     "created": blob.time_created.isoformat() if blob.time_created else None
                 })
             
-            print(f"✅ GCS List Success: Found {blob_count} files in namespace '{namespace}'")
+            print(f"✅ GCS List Success: Found {blob_count} files for user '{user_id}'")
             return files
         except Exception as e:
-            print(f"❌ Error listing files for namespace {namespace}: {str(e)}")
+            print(f"❌ Error listing files for user {user_id}: {str(e)}")
             return []
 
 # Initialize global client
