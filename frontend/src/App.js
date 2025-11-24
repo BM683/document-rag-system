@@ -5,16 +5,8 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { API_BASE_URL } from "./config";
 import "./App.css";
-
-// Use environment variable or fallback to local for development
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://document-rag-system-511830906232.europe-west1.run.app';
-
-// Debug: Log which API URL is being used
-console.log('🔧 Frontend Configuration:');
-console.log(`   API URL: ${API_BASE_URL}`);
-console.log(`   Environment: ${process.env.NODE_ENV}`);
-console.log(`   REACT_APP_API_URL: ${process.env.REACT_APP_API_URL}`);
 
 function DocumentApp() {
   const { user, logout } = useAuth();

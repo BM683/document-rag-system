@@ -1,6 +1,10 @@
 # Use Node.js 18 as base image
 FROM node:18-alpine as build
 
+# Accept API URL as build argument
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 # Set working directory
 WORKDIR /app
 
@@ -14,7 +18,7 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the React app
+# Build the React app (environment variables are embedded at build time)
 RUN npm run build
 
 # Use nginx to serve the built app
