@@ -1,15 +1,23 @@
 # gcs_client.py
 import os
+import json
 from typing import List
 from google.cloud import storage
+from google.oauth2 import service_account
 from fastapi import UploadFile
 from datetime import datetime
 import uuid
 
 class GCSClient:
     def __init__(self):
-        # Authentication handled automatically via GOOGLE_APPLICATION_CREDENTIALS
-        self.client = storage.Client()
+        credentials_json = os.getenv('GOOGLE_CREDENTIALS_JSON')
+        if credentials_json:
+            credentials_info = json.loads(credentials_json)
+            credentials = service_account.Credentials.from_service_account_info(credentials_info)
+            self.client = storage.Client(credentials=credentials)
+        else:
+            # Fall back to GOOGLE_APPLICATION_CREDENTIALS file path
+            self.client = storage.Client()
         self.bucket_name = os.getenv('GCS_BUCKET_NAME')
         self.bucket = self.client.bucket(self.bucket_name)
     
