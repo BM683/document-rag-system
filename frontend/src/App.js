@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import "./App.css";
 
 // Use environment variable or fallback to local for development
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://document-rag-system-511830906232.europe-west1.run.app';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://document-rag-system-production.up.railway.app';
 
 // Debug: Log which API URL is being used
 console.log('🔧 Frontend Configuration:');
